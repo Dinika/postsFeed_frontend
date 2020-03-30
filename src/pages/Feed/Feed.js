@@ -52,7 +52,7 @@ class Feed extends Component {
     }
     fetch('http://localhost:8000/feed/posts?page=' + page, {
       headers: {
-        Authorization: 'Bearer ' + this.props.token + 'ui'
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {
@@ -123,7 +123,7 @@ class Feed extends Component {
     let url = 'http://localhost:8000/feed/post';
     let method = 'POST';
     if (this.state.editPost) {
-      url = 'http://localhost:8000/feed/post/ ' + this.state.editPost._id
+      url = 'http://localhost:8000/feed/post/' + this.state.editPost._id
       method = 'PUT'
     }
 
@@ -131,7 +131,7 @@ class Feed extends Component {
       method: method,
       body: formData,
       headers: {
-        Authorization: 'Bearer ' + this.props.token + 'ui'
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {
@@ -186,7 +186,7 @@ class Feed extends Component {
     fetch('http://localhost:8000/feed/post/' + postId, {
       method: 'DELETE',
       headers: {
-        Authorization: 'Bearer ' + this.props.token + 'ui'
+        Authorization: 'Bearer ' + this.props.token
       }
     })
       .then(res => {

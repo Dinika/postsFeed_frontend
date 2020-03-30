@@ -17,7 +17,7 @@ class SinglePost extends Component {
     fetch('http://localhost:8000/feed/post/' + postId,
       {
         headers: {
-          Authorization: 'Bearer ' + this.props.token + 'ui'
+          Authorization: 'Bearer ' + this.props.token
         }
       })
       .then(res => {
