@@ -54,26 +54,47 @@ class Feed extends Component {
       page--;
       this.setState({ postPage: page });
     }
-    fetch('http://localhost:8000/feed/posts?page=' + page, {
-      headers: {
-        Authorization: 'Bearer ' + this.props.token
+    const query = {
+      query: `
+      {
+        getPosts {
+          posts {
+            _id
+            title
+            content
+            creator {
+              name
+            }
+            createdAt
+          }
+          totalPosts
+        }
       }
+      `
+    }
+    fetch('http://localhost:8000/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + this.props.token
+      },
+      body: JSON.stringify(query)
     })
       .then(res => {
-        if (res.status !== 200) {
-          throw new Error('Failed to fetch posts.');
-        }
         return res.json();
       })
       .then(resData => {
+        if (resData.errors) {
+          throw new Error('Fetching posts failed!!!!')
+        }
         this.setState({
-          posts: resData.posts.map(p => {
+          posts: resData.data.getPosts.posts.map(p => {
             return {
               ...p,
               imagePath: p.imageUrl
             }
           }),
-          totalPosts: resData.totalItems,
+          totalPosts: resData.data.getPosts.totalPosts,
           postsLoading: false
         });
       })
@@ -173,13 +194,12 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error('Creating a user failed!');
         }
-        console.log(resData)
         const post = {
-          _id: resData.post._id,
-          title: resData.post.title,
-          content: resData.post.content,
-          creator: resData.post.creator,
-          createdAt: resData.post.createdAt
+          _id: resData.data.createPost._id,
+          title: resData.data.createPost.title,
+          content: resData.data.createPost.content,
+          creator: resData.data.createPost.creator,
+          createdAt: resData.data.createPost.createdAt
         };
         this.setState(prevState => {
           return {
