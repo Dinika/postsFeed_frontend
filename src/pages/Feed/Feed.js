@@ -66,6 +66,7 @@ class Feed extends Component {
               name
             }
             createdAt
+            imageUrl
           }
           totalPosts
         }
@@ -149,39 +150,76 @@ class Feed extends Component {
     });
 
     const formData = new FormData()
-    formData.append('title', postData.title)
-    formData.append('content', postData.content)
     formData.append('image', postData.image)
-
-    let query = {
-      query: `
-        mutation {
-          createPost(postInput: {
-            title: "${postData.title}",
-            content: "${postData.content}",
-            imageUrl: "some url"
-          }) {
-            _id
-            title
-            content
-            imageUrl
-            createdAt
-            creator {
-              name
+    if (this.state.editPost) {
+      formData.append('oldPath', this.state.editPost.imagePath)
+    }
+    fetch('http://localhost:8000/post-image', {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer ' + this.props.token
+      },
+      body: formData
+    })
+      .then(res => {
+        return res.json()
+      })
+      .then(fileResponseData => {
+        const imageUrl = fileResponseData.filePath
+        let query = {
+          query: `
+            mutation {
+              createPost(postInput: {
+                title: "${postData.title}",
+                content: "${postData.content}",
+                imageUrl: "${imageUrl}"
+              }) {
+                _id
+                title
+                content
+                imageUrl
+                createdAt
+                creator {
+                  name
+                }
+              }
             }
+          `
+        }
+
+        if (this.state.editPost) {
+          query = {
+            query: `
+              mutation {
+                updatePost(
+                  id: "${this.state.editPost._id}",
+                  postInput: {
+                    title: "${postData.title}",
+                    content: "${postData.content}",
+                    imageUrl: "${imageUrl}"
+                  }) {
+                  _id
+                  title
+                  content
+                  imageUrl
+                  createdAt
+                  creator {
+                    name
+                  }
+                }
+              }
+            `
           }
         }
-      `
-    }
-
-    fetch('http://localhost:8000/graphql', {
-      method: 'POST',
-      body: JSON.stringify(query),
-      headers: {
-        Authorization: 'Bearer ' + this.props.token,
-        'Content-Type': 'application/json'
-      }
-    })
+        return fetch('http://localhost:8000/graphql', {
+          method: 'POST',
+          body: JSON.stringify(query),
+          headers: {
+            Authorization: 'Bearer ' + this.props.token,
+            'Content-Type': 'application/json'
+          }
+        })
+      })
       .then(res => {
         return res.json()
       })
@@ -194,12 +232,14 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error('Creating a user failed!');
         }
+        const resPost = this.state.editPost ? "createPost" : "updatePost"
         const post = {
-          _id: resData.data.createPost._id,
-          title: resData.data.createPost.title,
-          content: resData.data.createPost.content,
-          creator: resData.data.createPost.creator,
-          createdAt: resData.data.createPost.createdAt
+          _id: resData.data[resPost]._id,
+          title: resData.data[resPost].title,
+          content: resData.data[resPost].content,
+          creator: resData.data[resPost].creator,
+          createdAt: resData.data[resPost].createdAt,
+          imagePath: resData.data[resPost].imagePath
         };
         this.setState(prevState => {
           let updatedPosts = [...prevState.posts]
