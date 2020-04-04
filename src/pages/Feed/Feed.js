@@ -68,22 +68,25 @@ class Feed extends Component {
     }
     const query = {
       query: `
-      {
-        getPosts(page: ${page}) {
-          posts {
-            _id
-            title
-            content
-            creator {
-              name
+        query FetchPost($page: Int) {
+          getPosts(page: $page) {
+            posts {
+              _id
+              title
+              content
+              creator {
+                name
+              }
+              createdAt
+              imageUrl
             }
-            createdAt
-            imageUrl
+            totalPosts
           }
-          totalPosts
-        }
       }
-      `
+      `,
+      variables: {
+        page: page
+      }
     }
     fetch('http://localhost:8000/graphql', {
       method: 'POST',
@@ -120,12 +123,15 @@ class Feed extends Component {
     formData.append('status', this.state.status)
     const query = {
       query: `
-        mutation {
-          updateStatus(status: "${this.state.status}") {
+        mutation UpdateUserStatus($userStatus: String!) {
+          updateStatus(status: $userStatus) {
             status
           }
         }
-      `
+      `,
+      variables: {
+        userStatus: this.state.status
+      }
     }
     fetch('http://localhost:8000/graphql', {
       method: 'POST',
@@ -189,14 +195,14 @@ class Feed extends Component {
         return res.json()
       })
       .then(fileResponseData => {
-        const imageUrl = fileResponseData.filePath
+        const imageUrl = fileResponseData.filePath || 'undefined'
         let query = {
           query: `
-            mutation {
+            mutation CreateNewPost($title: String!, $content: String!, $imageUrl: String!) {
               createPost(postInput: {
-                title: "${postData.title}",
-                content: "${postData.content}",
-                imageUrl: "${imageUrl}"
+                title: $title,
+                content: $content,
+                imageUrl: $imageUrl
               }) {
                 _id
                 title
@@ -208,19 +214,24 @@ class Feed extends Component {
                 }
               }
             }
-          `
+          `,
+          variables: {
+            title: postData.title,
+            content: postData.content,
+            imageUrl: imageUrl
+          }
         }
 
         if (this.state.editPost) {
           query = {
             query: `
-              mutation {
+              mutation UpdateExistingPost($postId: ID!, $title: String!, $content: String!, $imageUrl: String!){
                 updatePost(
-                  id: "${this.state.editPost._id}",
+                  id: $postId,
                   postInput: {
-                    title: "${postData.title}",
-                    content: "${postData.content}",
-                    imageUrl: "${imageUrl}"
+                    title: $title,
+                    content: $content,
+                    imageUrl: $imageUrl
                   }) {
                   _id
                   title
@@ -232,7 +243,13 @@ class Feed extends Component {
                   }
                 }
               }
-            `
+            `,
+            variables: {
+              postId: this.state.editPost._id,
+              title: postData.title,
+              content: postData.content,
+              imageUrl: imageUrl
+            }
           }
         }
         return fetch('http://localhost:8000/graphql', {
@@ -256,7 +273,7 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error('Creating a user failed!');
         }
-        const resPost = this.state.editPost ? "createPost" : "updatePost"
+        const resPost = this.state.editPost ? "updatePost" : "createPost"
         const post = {
           _id: resData.data[resPost]._id,
           title: resData.data[resPost].title,
@@ -267,12 +284,14 @@ class Feed extends Component {
         };
         this.setState(prevState => {
           let updatedPosts = [...prevState.posts]
+          let updatedTotalPosts = prevState.totalPosts
           if (prevState.editPost) {
             const postIndex = prevState.posts.findIndex(
               p => p._id === prevState.editPost._id
             )
             updatedPosts[postIndex] = post
           } else {
+            updatedTotalPosts++
             if (prevState.posts.length >= 2) {
               updatedPosts.pop();
             }
@@ -282,7 +301,8 @@ class Feed extends Component {
             posts: updatedPosts,
             isEditing: false,
             editPost: null,
-            editLoading: false
+            editLoading: false,
+            totalPosts: updatedTotalPosts
           };
         });
       })
